@@ -14,6 +14,11 @@ class ExactTest < Test::Unit::TestCase
     }
   end
   
+  def test_recurring_transaction_types
+    assert_equal "41", ActiveMerchant::Billing::ExactGateway::TRANSACTIONS[:recurring_seed_purchase]
+    assert_equal "30", ActiveMerchant::Billing::ExactGateway::TRANSACTIONS[:tagged_purchase]
+  end
+  
   def test_successful_purchase
     @gateway.expects(:ssl_post).returns(successful_purchase_response)
     assert response = @gateway.purchase(@amount, @credit_card, @options)
@@ -25,6 +30,13 @@ class ExactTest < Test::Unit::TestCase
     ExactGateway::SENSITIVE_FIELDS.each{ |f| assert !response.params.has_key?(f.to_s) }
   end
   
+  def test_successful_recurring_seed_purchase
+    @gateway.expects(:ssl_post).returns(successful_purchase_response)
+    response = @gateway.recurring_seed_purchase(@amount, @credit_card, @options)
+    assert response.success?
+    assert_equal "ET1700;106625152", response.authorization
+  end
+  
   def test_failed_purchase
     @gateway.expects(:ssl_post).returns(failed_purchase_response)
   
@@ -33,6 +45,12 @@ class ExactTest < Test::Unit::TestCase
     assert_failure response
   end
   
+  def test_failed_recurring_purchase
+    @gateway.expects(:ssl_post).returns(failed_purchase_response)
+  
+    assert response = @gateway.recurring_seed_purchase(@amount, @credit_card, @options)
+    assert_failure response
+  end
 
   def test_expdate
     assert_equal( "%02d%s" % [ @credit_card.month,
@@ -46,6 +64,20 @@ class ExactTest < Test::Unit::TestCase
     assert_failure response
     assert response.test?
     assert_equal 'Unable to handle request without a valid action parameter. Please supply a valid soap action.', response.message
+  end
+  
+  def test_successful_tagged_purchase
+    @gateway.expects(:ssl_post).returns(successful_purchase_response)
+    response = @gateway.tagged_purchase(@amount, "auth;tag", @options)
+    
+    assert_equal "ET1700;106625152", response.authorization  
+  end
+  
+  def test_generating_a_tagged_purchase_request
+    xml = @gateway.send :build_tagged_purchase_request, @amount, "auth;tag", @options    
+    assert xml.include?("<DollarAmount>1.00</DollarAmount>")
+    assert xml.include?("<Authorization_Num>auth</Authorization_Num>")
+    assert xml.include?("<Transaction_Tag>tag</Transaction_Tag>")
   end
   
   def test_supported_countries
@@ -69,6 +101,8 @@ class ExactTest < Test::Unit::TestCase
     response = @gateway.purchase(@amount, @credit_card)
     assert_equal 'M', response.cvv_result['code']
   end
+  
+
   
   
   private

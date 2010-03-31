@@ -8,10 +8,12 @@ module ActiveMerchant #:nodoc:
       TEST_LOGINS = [ {:login => "A00049-01", :password => "test1"},
                       {:login => "A00427-01", :password => "testus"} ]
       
-      TRANSACTIONS = { :sale          => "00",
-                       :authorization => "01",
-                       :capture       => "32",
-                       :credit        => "34" }
+      TRANSACTIONS = { :sale                    => "00",
+                       :authorization           => "01",
+                       :capture                 => "32",
+                       :credit                  => "34",
+                       :recurring_seed_purchase => "41",
+                       :tagged_purchase         => "30" }
       
 
       ENVELOPE_NAMESPACES = { 'xmlns:xsd' => 'http://www.w3.org/2001/XMLSchema',
@@ -62,7 +64,17 @@ module ActiveMerchant #:nodoc:
       def purchase(money, credit_card, options = {})
         commit(:sale, build_sale_or_authorization_request(money, credit_card, options))
       end
-    
+      
+      # Make a purchase and seed for recurring transactions
+      def recurring_seed_purchase(money, credit_card, options)
+        commit(:recurring_seed_purchase, build_sale_or_authorization_request(money, credit_card, options))
+      end
+
+      # Make a purchase based on a previously setup tag
+      def tagged_purchase(money, identification, options)
+        commit(:tagged_purchase, build_tagged_purchase_request(money, identification, options))
+      end
+      
       def capture(money, authorization, options = {})
         commit(:capture, build_capture_or_credit_request(money, authorization, options))
       end
@@ -108,6 +120,17 @@ module ActiveMerchant #:nodoc:
         add_amount(xml, money)
         add_customer_data(xml, options)
     
+        xml.target!
+      end
+      
+      def build_tagged_purchase_request(money, identification, options)
+        xml = Builder::XmlMarkup.new
+
+        add_identification(xml, identification)
+        add_amount(xml, money)
+        add_customer_data(xml, options)
+        add_invoice(xml, options)
+        
         xml.target!
       end
       

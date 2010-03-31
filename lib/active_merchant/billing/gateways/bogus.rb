@@ -93,6 +93,29 @@ module ActiveMerchant #:nodoc:
           raise Error, UNSTORE_ERROR_MESSAGE
         end
       end
+      
+      def recurring_seed_purchase(money, credit_card, options)
+        case credit_card.number
+        when '1'
+          Response.new(true, SUCCESS_MESSAGE, {:paid_amount => money.to_s}, :test => true)
+        when '2'
+          Response.new(false, FAILURE_MESSAGE, {:paid_amount => money.to_s, :error => FAILURE_MESSAGE },:test => true)
+        else
+          raise Error, ERROR_MESSAGE
+        end
+      end
+      
+      def tagged_purchase(money, identification, options)
+        case identification
+        when '1'
+          Response.new(true, SUCCESS_MESSAGE, {:billingid => '1'}, :test => true, :authorization => AUTHORIZATION )
+        when '2'
+          Response.new(false, FAILURE_MESSAGE, {:billingid => nil, :error => FAILURE_MESSAGE }, :test => true)
+        else
+          raise Error, "Error processing tagged purchase. Use '1' for success, and '2' for error"
+        end
+      end
+      
     end
   end
 end
